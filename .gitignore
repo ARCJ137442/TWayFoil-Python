@@ -1,0 +1,34 @@
+# Build and Release Folders
+bin-debug/
+bin-release/
+[Oo]bj/
+[Bb]in/
+[Bb]uild/
+[Dd]ist/
+__pycache__/
+*.lnk
+
+# VS Code
+.vscode/
+.code-workspace
+
+# Bash Log
+end
+*.stackdump
+git status
+
+# Test
+*pictures/
+
+# Executables
+*.exe
+*.html
+*.bat
+
+# Project files, i.e. `.project`, `.actionScriptProperties` and `.flexProperties`
+
+# should NOT be excluded as they contain compiler settings and other important
+
+# Other files and folders
+.settings/
+*.note
