@@ -1,10 +1,5 @@
-"""
-import json
-import chardet
-"""
 from PIL import Image
 import math
-import types
 import os
 import traceback
 from tqdm import tqdm
@@ -23,8 +18,7 @@ Image to binary:
      3. Delete the L elements at the end of the byte array
          For example: [0x99,0x8a,0xcb,0x6a,0x6a,0x63,0x4b,0xde,0x87,0x00,0x00,0x00]-> [0x99,0x8a,0xcb,0x6a,0x6a,0x63,0x4b,0xde,0x87]
      4. Create binary file based on byte array
-'''
-'''
+
 二进制转图像：
     1.把byte数组转换为32位像素int数组
         例如：[0xff,0x76,0x00,0x3a,0x98,0x1d,0xcb](len=7) -> [0xff76003a,0x981dcb00](len=2)
@@ -43,17 +37,11 @@ Image to binary:
 DEBUG=False
 NCOLS=70
 
-#process
-def process_bar(percent,start_str='',end_str='',total_length=0):
-    bar=''.join(['\u2588'] * int(percent * total_length)) + ''
-    bar='\r' + start_str + bar.ljust(total_length) + ' {:0>4.1f}%|'.format(percent*100) + end_str
-    print(bar,end='',flush=True)
-
 #aa,rr,gg,bb -> 0xaarrggbb
 def converBinaryToPixels(b):#bytes b
     global NCOLS
     lb=len(b)
-    result=[4-(lb%4)]#included length
+    result=[4-(lb%4)]#included length,4 bit in a pixel
     j=0
     pixel=0
     for i in tqdm(range(lb),desc='Converting: ',ncols=NCOLS):
@@ -75,16 +63,13 @@ def getPixelsAndLength(image):
     global NCOLS
     result=[0,[]]
     i=0
-    il=image.width*image.height
-    processBar=tqdm(total=il,desc='Scanning: ',ncols=NCOLS)
+    processBar=tqdm(total=image.width*image.height,desc='Scanning: ',ncols=NCOLS)
     for y in range(image.height):
         for x in range(image.width):
             r,g,b,a=image.getpixel((x,y))
             color=RGBAtoPixel(r,g,b,a)
-            if i==0:
-                result[0]=color
-            else:
-                result[1].append(color)
+            if i==0:result[0]=color
+            else:result[1].append(color)
                 #print("getPixelsAndLength:"+str((x,y))+" "+hex(color)+" -> result["+str(i)+"]")
             processBar.update(1)
             i=i+1
@@ -127,8 +112,7 @@ def dealFromBinary(path):
         print("Faild to load binary \""+path+"\"")
         return
     #====1 Convert Binary and 2 Insert Pixel====#
-    r=f.read()
-    pixels=converBinaryToPixels(r)
+    pixels=converBinaryToPixels(f.read())
     #====Close File====#
     f.close()
     #====3 Create Image====#
@@ -150,10 +134,8 @@ def dealFromImage(f,path):
             binary.pop()
     #====4 Create Binary File====#
     print("dealFromImage()->file:",f,f.format)
-    b=bytes(binary)
     f.close()
-    #print("dealFromImage()->b="+str(list(b)))
-    createBinaryFile(b,path)
+    createBinaryFile(bytes(binary),path)
 
 def createImage(sourcePath,pixels):
     global DEBUG
@@ -168,7 +150,6 @@ def createImage(sourcePath,pixels):
     height=int(lpx/width)
     n_im=Image.new("RGBA",(width,height),(0,0,0,0))
     i=0
-    j=0
     processBar=tqdm(total=lpx,desc='Creating: ',ncols=NCOLS)
     for y in range(height):
         for x in range(width):
@@ -177,42 +158,35 @@ def createImage(sourcePath,pixels):
                 #==Write Image==#
                 if DEBUG:print(str((r,g,b,a))+" -> "+str((x,y)))
                 n_im.putpixel((x,y),(r,g,b,a))
-                lastY=y
                 i=i+1
                 processBar.update(1)
     processBar.close()
-    #print("height:",lastY,height,y)
-    #n_im=n_im.crop((0,0,width,lastY+1))
-    #==Show Image==#
-    #Show Image
-    #n_im.show()
+    #==Save Image==#
+    #Show Image(Unused) #n_im.show()
     n_im.save(os.path.basename(sourcePath)+'.png')
     print(n_im,n_im.format)
     print("Image created!")
 
 def createBinaryFile(b,path):#bytes b,str path
     #Build Text
-    full_path=os.path.basename(path)+'.txt'
-    file=open(full_path,'wb',-1)
     print("Writing...")
-    file.write(b)
-    #==Close File==#
+    try:
+        file=open(os.path.basename(path)+'.txt','wb',-1)
+        file.write(b)
+        #==Close File==#
+    except BaseException as e:printExcept(e,"createBinaryFile()->")
     file.close()
     print("Text generated!")
 
 def readImage(path):
-    try:
-        return Image.open(path)
-    except:
-        return None
+    try:return Image.open(path)
+    except:return None
 
 def readBinary(path):
     try:
         f=open(path,'rb')
         return f
-    except BaseException as e:
-        tb=''
-        printExcept(e,"readBinary()->")
+    except BaseException as e:printExcept(e,"readBinary()->")
     try:f.close()
     except:pass
     return None
@@ -223,30 +197,17 @@ def printExcept(exc,head):
     if DEBUG:tb="\n"+traceback.format_exc()
     print(head+"Find a exception:",exc,tb)
 
-#Unused
-def readText(path):
-    try:
-        f=open(path,'rt')
-        r=f.read()
-        return r
-    except BaseException as e:
-        printExcept(e,"readText()->")
-        return None
-    f.close()
-    return r
-
 #pixel(0xaarrggbb) -> RGBA(r,g,b,a)
-def pixelToRGBA(pixel):
-    return ((pixel>>16)&0xff,(pixel>>8)&0xff,pixel&0xff,(pixel>>24))
+def pixelToRGBA(pixel):return ((pixel>>16)&0xff,(pixel>>8)&0xff,pixel&0xff,(pixel>>24))
 
 #RGBA(r,g,b,a) -> pixel(0xaarrggbb)
-def RGBAtoPixel(r,g,b,a):
-    return (a<<24)|(r<<16)|(g<<8)|b
+def RGBAtoPixel(r,g,b,a):return (a<<24)|(r<<16)|(g<<8)|b
 
-def detectYes(string):
-    return string.lower()=="y" or string.lower()=="yes" or string.lower()=="true"
+def InputYN(head):
+    yn=input()
+    return yn.lower()=="y" or yn.lower()=="yes" or yn.lower()=="true"
 
-#Direct Function
+#Function Main
 if __name__=='__main__':
     import sys
     if len(sys.argv) > 1:
@@ -259,10 +220,10 @@ if __name__=='__main__':
             try:
                 #print("Usage: python IConver.py \"File Name\"")
                 path=input("Please choose PATH:")
-                if detectYes(input("Force compress to Image?Y/N:")):dealFromBinary(path)
+                if InputYN("Force compress to Image?Y/N:"):dealFromBinary(path)
                 else: autoConver(path)
                 continue
             except BaseException as e:
                 printExcept(e,"readText()->")
-                if detectYes(input("Do you want to terminate the program?Y/N:")):
+                if InputYN("Do you want to terminate the program?Y/N:"):
                     break
