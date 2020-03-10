@@ -18,7 +18,8 @@ end
 git status
 
 # Test
-*pictures/
+*.png
+*.txt
 
 # Executables
 *.exe
