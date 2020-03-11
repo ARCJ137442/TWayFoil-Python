@@ -36,7 +36,20 @@ Image to binary:
 
 DEBUG=True
 NCOLS=70
-VERSION='1.2.0'
+VERSION='1.2.5'
+
+#Language about
+SYSTEM_LANGUAGE=0
+try:
+    import win32api
+    SYSTEM_LANGUAGE=win32api.GetSystemDefaultLangID()
+except:pass
+
+#Language supports zh and en(default)
+def getStrByLanguage(en='',zh=''):
+    if SYSTEM_LANGUAGE==0x804:return zh
+    return en
+def gsbl(en='',zh=''):return getStrByLanguage(en=en,zh=zh)
 
 #aa,rr,gg,bb -> 0xaarrggbb
 def binaryToPixels(binary):#bytes b
@@ -81,22 +94,22 @@ def readFile(path):
         else:return (1,file0)
     except BaseException as error:return (-1,error)
 
-def autoConver(currentFile,forceImage=False):
+def autoConver(currentFile,path,forceImage=False):
     #====Define====#
     if currentFile!=None:
-        try:dealFromImage(currentFile,file_path)
+        try:dealFromImage(currentFile,path)
         except BaseException as e:printExcept(e,"autoConver()->")
         else:return
-    if (not forceImage) and type(currentFile)!='image':print("Faild to load image \""+file_path+"\",now try to load as binary")
-    currentFile=readBinary(path)
-    dealFromBinary(file_path,currentFile)
+    if (not forceImage) and type(currentFile)!='image':
+        print(gsbl("Faild to load image ","\u8bfb\u53d6\u56fe\u50cf\u5931\u8d25")+"\""+path+"\","+gsbl("now try to load as binary","\u73b0\u5728\u5c1d\u8bd5\u8bfb\u53d6\u4e8c\u8fdb\u5236\u6570\u636e"))
+    dealFromBinary(path,readBinary(path))
 
 def dealFromBinary(path,binaryFile):
     #========From Binary========#
     if binaryFile==None:
-        print("Faild to load binary \""+path+"\"")
+        print(gsbl("Faild to load binary","\u8bfb\u53d6\u4e8c\u8fdb\u5236\u6570\u636e\u5931\u8d25")+" \""+path+"\"")
         return
-    print("PATH:"+path+",FILE:",binaryFile)
+    print(gsbl("PATH","\u8def\u5f84")+":"+path+","+gsbl("FILE","\u6587\u4ef6")+":",binaryFile)
     #====1 Convert Binary and 2 Insert Pixel====#
     pixels=binaryToPixels(binaryFile.read())
     #====Close File====#
@@ -105,7 +118,7 @@ def dealFromBinary(path,binaryFile):
     createImage(path,pixels)
 
 def dealFromImage(imageFile,path):
-    print("PATH:"+path+",FILE:",imageFile,imageFile.format)
+    print(gsbl("PATH","\u8def\u5f84")+":"+path+","+gsbl("FILE","\u6587\u4ef6")+":",imageFile,imageFile.format)
     #========From Image========#
     #====1 Convert Image to Pixel,and Get Length====#
     PaL=getPixelsAndLength(imageFile)
@@ -159,7 +172,7 @@ def createImage(sourcePath,pixels):
     #Show Image(Unused) #nim.show()
     nImage.save(os.path.basename(sourcePath)+'.png')
     if DEBUG:print(nImage,nImage.format)
-    print("Image File created!")
+    print(gsbl("Image File created!","\u56fe\u7247\u6587\u4ef6\u5df2\u521b\u5efa\uff01"))
 
 #For pixel: 0xaarrggbb -> 0xaabbggrr
 def RGBAtoBGRA(pixel):return ((pixel&0xff0000)>>16)|((pixel&0xff)<<16)|(pixel&0xff00ff00)
@@ -172,7 +185,7 @@ def createBinaryFile(binary,path):#bytes binary,str path
     except BaseException as exception:printExcept(exception,"createBinaryFile()->")
     #==Close File==#
     file.close()
-    print("Binary File generated!")
+    print(gsbl("Binary File generated!","\u4e8c\u8fdb\u5236\u6587\u4ef6\u5df2\u521b\u751f\u6210"))
 
 #pixel(0xaarrggbb) -> RGBA(r,g,b,a)
 def pixelToRGBA(pixel):return ((pixel>>16)&0xff,(pixel>>8)&0xff,pixel&0xff,(pixel>>24))
@@ -204,27 +217,32 @@ def InputYN(head):
     yn=input(head)
     return yn.lower()=="y" or yn.lower()=="yes" or yn.lower()=="true"
 
-#Function Main
-if __name__=='__main__':
-    import sys
-    if len(sys.argv) > 1:
-        for file_path in sys.argv[1:]:
-            autoConver(file_path)
-            print()
-    else:
-        print("<====IConver v"+VERSION+"====>")
-        #print("Now in Command Line Mode!")
-        while(True):
-            try:
-                #print("Usage: python IConver.py \"File Name\"")
-                path=input("Please choose PATH:")
-                fileImf=readFile(path)
-                code_=fileImf[0]
-                file_=fileImf[1]
-                if code_==0 or (code_>0 and InputYN("Force compress to Image?Y/N:")):dealFromBinary(path,file_)
-                elif code_>0:dealFromImage(file_,path)
-                else:raise file_#exception at here
-            except BaseException as e:
-                printExcept(e,"readText()->")
-                if InputYN("Do you want to terminate the program?Y/N:"):break
-            print()#new line
+def cmdLineMode():
+    print("<====IConver v"+VERSION+"====>")
+    while(True):
+        try:
+            path=input("Please choose PATH:")
+            fileImf=readFile(path)
+            code_=fileImf[0]
+            file_=fileImf[1]
+            if code_==0 or (code_>0 and InputYN("Force compress to Image?Y/N:")):dealFromBinary(path,file_)
+            elif code_>0:dealFromImage(file_,path)
+            else:raise file_#exception at here
+        except BaseException as e:
+            printExcept(e,"readText()->")
+            if InputYN("Do you want to terminate the program?Y/N:"):break
+        print()#new line
+
+try:
+    #Function Main
+    if __name__=='__main__':
+        import sys
+        if len(sys.argv) > 1:
+                try:
+                    for file_path in sys.argv[1:]:
+                        autoConver(file_path)
+                        print()
+                except BaseException as error:
+                    if(InputYN("Do you need to switch to command line mode?Y/N:")):cmdLineMode()
+        else:cmdLineMode()
+except BaseException as e:printExcept(e,"main->")
