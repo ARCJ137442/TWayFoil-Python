@@ -36,6 +36,7 @@ Image to binary:
 
 DEBUG=True
 NCOLS=70
+VERSION='1.2.0'
 
 #aa,rr,gg,bb -> 0xaarrggbb
 def binaryToPixels(binary):#bytes b
@@ -211,7 +212,7 @@ if __name__=='__main__':
             autoConver(file_path)
             print()
     else:
-        print("<====IConver====>")
+        print("<====IConver v"+VERSION+"====>")
         #print("Now in Command Line Mode!")
         while(True):
             try:
