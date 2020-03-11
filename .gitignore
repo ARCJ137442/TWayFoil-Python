@@ -20,6 +20,8 @@ git status
 # Test
 *.png
 *.txt
+*.jpg
+*.gif
 
 # Executables
 *.exe
