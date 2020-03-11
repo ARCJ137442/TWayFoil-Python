@@ -34,22 +34,22 @@ Image to binary:
     4.根据byte数组创建二进制文件
 '''
 
-DEBUG=False
+DEBUG=True
 NCOLS=70
 
 #aa,rr,gg,bb -> 0xaarrggbb
-def binaryToPixels(b):#bytes b
+def binaryToPixels(binary):#bytes b
     global NCOLS
-    lb=len(b)
-    result=[(-lb)&3]#included length,4 bit in a pixel
+    binaryLength=len(binary)
+    result=[(-binaryLength)&3]#included length,4 bit in a pixel
     j=0
     pixel=0
-    for i in tqdm(range(lb),desc='Converting: ',ncols=NCOLS):
-        if j<4:pixel|=b[i]<<(j<<3)
+    for i in tqdm(range(binaryLength),desc='Converting: ',ncols=NCOLS):
+        if j<4:pixel|=binary[i]<<(j<<3)
         else:
             j=0
             result.append(pixel)
-            pixel=b[i]
+            pixel=binary[i]
         j=j+1
     if j!=0:result.append(pixel)#Add the end of byte
     return result
@@ -59,72 +59,76 @@ def binaryToPixels(b):#bytes b
 def pixelsToBinary(pixels):#int[] pixels
     result=[]
     processBar=tqdm(total=len(pixels),desc='Converting: ',ncols=NCOLS)
-    for pix in pixels:
-        color=pixelToRGBA(pix)
-        result.append(color[0])#a
-        result.append(color[1])#r
-        result.append(color[2])#g
-        result.append(color[3])#b
+    for pixel in pixels:
+        result.append(pixel&0xff)#b
+        result.append((pixel&0xff00)>>8)#g
+        result.append((pixel&0xff0000)>>16)#r
+        result.append((pixel&0xff000000)>>24)#a
         processBar.update(1)
     processBar.close()
     return result
 #returns bytes
 
-def autoConver(file_path):
+#0=binary,1=image,-1=exception
+def readFile(path):
+    try:
+        file0=readImage(path)
+        if file0==None:
+            file0=readBinary(path)
+            if file0==None:return (-1,FileNotFoundError(path))
+            return (0,file0)
+        else:return (1,file0)
+    except BaseException as error:return (-1,error)
+
+def autoConver(currentFile,forceImage):
     #====Define====#
-    f=readImage(file_path)
-    if f!=None:
-        try:dealFromImage(f,file_path)
+    if currentFile!=None:
+        try:dealFromImage(currentFile,file_path)
         except BaseException as e:printExcept(e,"autoConver()->")
         else:return
-    if type(f)!='image':print("Faild to load image \""+file_path+"\",now try to load as binary")
-    dealFromBinary(file_path)
+    if (not forceImage) and type(currentFile)!='image':print("Faild to load image \""+file_path+"\",now try to load as binary")
+    currentFile=readBinary(path)
+    dealFromBinary(file_path,currentFile)
 
-def dealFromBinary(path):
-    global DEBUG
+def dealFromBinary(path,binaryFile):
     #========From Binary========#
-    f=readBinary(path)
-    if f==None:
+    if binaryFile==None:
         print("Faild to load binary \""+path+"\"")
         return
-    print("PATH:"+path+",FILE:",f)
+    print("PATH:"+path+",FILE:",binaryFile)
     #====1 Convert Binary and 2 Insert Pixel====#
-    pixels=binaryToPixels(f.read())
+    pixels=binaryToPixels(binaryFile.read())
     #====Close File====#
-    f.close()
+    binaryFile.close()
     #====3 Create Image====#
     createImage(path,pixels)
 
-def dealFromImage(f,path):
-    print("PATH:"+path+",FILE:",f,f.format)
-    global DEBUG
+def dealFromImage(imageFile,path):
+    print("PATH:"+path+",FILE:",imageFile,imageFile.format)
     #========From Image========#
     #====1 Convert Image to Pixel,and Get Length====#
-    PaL=getPixelsAndLength(f)
-    length=PaL[0]
+    PaL=getPixelsAndLength(imageFile)
+    tailLength=PaL[0]&3#Limit the length lower than 4
     pixels=PaL[1]
-    print(">-Pal:","length="+str(length),"len(pixels) =",len(pixels))
     #====2 Convert Pixel to Binary and 3 Delete the L Byte====#
     binary=pixelsToBinary(pixels)
-    print(">-len(binery) =",len(binary))
-    if length>0:
-        for i in range(length):binary.pop()
+    if tailLength>0:
+        for i in range(tailLength):binary.pop()
     #====4 Create Binary File====#
-    f.close()
+    imageFile.close()
     createBinaryFile(bytes(binary),path)
 
 def getPixelsAndLength(image):
     global NCOLS
     result=[0,[]]
-    t=True
-    plist=list(image.getdata())
-    processBar=tqdm(total=len(plist),desc='Scanning: ',ncols=NCOLS)
-    for pixel in plist:
-        color=ARGBtoPixel(pixel)
-        if t:
-            print("\n>-getPixelsAndLength(",pixel,")->",color)
+    isFirst=True
+    pixList=list(image.getdata())
+    processBar=tqdm(total=len(pixList),desc='Scanning: ',ncols=NCOLS)
+    for pixel in pixList:
+        color=RGBAtoPixel(pixel)
+        if isFirst:
             result[0]=color
-            t=False
+            isFirst=False
         else:result[1].append(color)
         processBar.update(1)
     processBar.close()
@@ -132,42 +136,39 @@ def getPixelsAndLength(image):
 #returns (int,int[])
 
 def createImage(sourcePath,pixels):
-    global DEBUG
     global NCOLS
+    global DEBUG
     #==Operate Image==#
-    lpx=len(pixels)
-    width=int(math.sqrt(lpx))
-    while lpx%width>0:width=width-1
-    height=int(lpx/width)
-    nim=Image.new("RGBA",(width,height),(0,0,0,0))
+    lenPixel=len(pixels)
+    width=int(math.sqrt(lenPixel))
+    while lenPixel%width>0:width=width-1
+    height=int(lenPixel/width)
+    nImage=Image.new("RGBA",(width,height),(0,0,0,0))
     i=0
-    imL=nim.load()
-    processBar=tqdm(total=lpx,desc='Creating: ',ncols=NCOLS)
+    niLoad=nImage.load()
+    processBar=tqdm(total=lenPixel,desc='Creating: ',ncols=NCOLS)
     for y in range(height):
         for x in range(width):
-            #==Write Image==#
-            #nim.putpixel((x,y),pixelToRGBA(pixels[i]))
-            if i==0:
-                print("\n>-createImage(",x,y,")->",hex(pixels[i]))
-            imL[x,y]=pixels[i]
-            if i==0:
-                print(">-createImage#detect(",x,y,")->",hex(pixels[i]),imL[x,y],nim.getpixel((x,y)))
+            #==Write Image==#old:nim.putpixel((x,y),pixelToRGBA(pixels[i]))
+            niLoad[x,y]=RGBAtoBGRA(pixels[i])#The image's load need write pixel as 0xaabbggrr,I don't know why
             i=i+1
             processBar.update(1)
     processBar.close()
     #==Save Image==#
     #Show Image(Unused) #nim.show()
-    nim.save(os.path.basename(sourcePath)+'.png')
-    print(nim,nim.format)
+    nImage.save(os.path.basename(sourcePath)+'.png')
+    if DEBUG:print(nImage,nImage.format)
     print("Image File created!")
 
-def createBinaryFile(b,path):#bytes b,str path
+#For pixel: 0xaarrggbb -> 0xaabbggrr
+def RGBAtoBGRA(pixel):return ((pixel&0xff0000)>>16)|((pixel&0xff)<<16)|(pixel&0xff00ff00)
+
+def createBinaryFile(binary,path):#bytes binary,str path
     #Build Text
-    print("Writing...")
     try:
         file=open(generateFileName(path),'wb',-1)
-        file.write(b)
-    except BaseException as e:printExcept(e,"createBinaryFile()->")
+        file.write(binary)
+    except BaseException as exception:printExcept(exception,"createBinaryFile()->")
     #==Close File==#
     file.close()
     print("Binary File generated!")
@@ -176,38 +177,30 @@ def createBinaryFile(b,path):#bytes b,str path
 def pixelToRGBA(pixel):return ((pixel>>16)&0xff,(pixel>>8)&0xff,pixel&0xff,(pixel>>24))
 
 #RGBA(a,r,g,b)<Tuple/List> -> pixel(0xaarrggbb)
-def ARGBtoPixel(color):
+def RGBAtoPixel(color):
     #For Image uses RGB:
     if len(color)<4:alpha=0xff000000
-    else:alpha=color[0]<<24
-    return alpha|(color[1]<<16)|(color[2]<<8)|color[3]
+    else:alpha=color[3]<<24
+    return alpha|(color[0]<<16)|(color[1]<<8)|color[2]
 
 def generateFileName(originPath):
-    bn=os.path.basename(originPath)
-    if bn.count('.')>1:return bn[0:bn.rindex('.')]
-    return bn+'.txt'
+    baseName=os.path.basename(originPath)
+    if baseName.count('.')>1:return baseName[0:baseName.rindex('.')]
+    return baseName+'.txt'
 
 def readImage(path):
     try:return Image.open(path)
     except:return None
 
-def readBinary(path):
-    try:f=open(path,'rb')
-    except BaseException as e:printExcept(e,"readBinary()->")
-    else:return f
-    try:f.close()
-    except:pass
-    return None
+def readBinary(path):return open(path,'rb')#raises error
 
-def printExcept(exc,head):
+def printExcept(exc,funcPointer):
     global DEBUG
-    tb=""
-    if DEBUG:tb+="\n"+traceback.format_exc()
-    print(head+"Find a exception:",exc,tb)
+    if DEBUG:print(funcPointer+"Find a exception:",exc,"\n"+traceback.format_exc())
+    else: print(funcPointer+"Find a exception:",exc)
 
 def InputYN(head):
-    print(head,end='')
-    yn=input()
+    yn=input(head)
     return yn.lower()=="y" or yn.lower()=="yes" or yn.lower()=="true"
 
 #Function Main
@@ -224,9 +217,13 @@ if __name__=='__main__':
             try:
                 #print("Usage: python IConver.py \"File Name\"")
                 path=input("Please choose PATH:")
-                if InputYN("Force compress to Image?Y/N:"):dealFromBinary(path)
-                else: autoConver(path)
+                fileImf=readFile(path)
+                code_=fileImf[0]
+                file_=fileImf[1]
+                if code_==0 or (code_>0 and InputYN("Force compress to Image?Y/N:")):dealFromBinary(path,file_)
+                elif code_>0:dealFromImage(file_,path)
+                else:raise file_#exception at here
             except BaseException as e:
                 printExcept(e,"readText()->")
                 if InputYN("Do you want to terminate the program?Y/N:"):break
-            print()
+            print()#new line
