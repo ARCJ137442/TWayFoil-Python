@@ -80,7 +80,7 @@ def readFile(path):
         else:return (1,file0)
     except BaseException as error:return (-1,error)
 
-def autoConver(currentFile,forceImage):
+def autoConver(currentFile,forceImage=False):
     #====Define====#
     if currentFile!=None:
         try:dealFromImage(currentFile,file_path)
