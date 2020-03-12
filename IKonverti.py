@@ -34,7 +34,6 @@ Image to binary:
     4.根据byte数组创建二进制文件
 '''
 
-DEBUG=True
 NCOLS=70
 SELF_NAME='IKonverti'
 VERSION='1.2.5'
@@ -170,7 +169,6 @@ def getPixelsAndLength(image):
 
 def createImage(sourcePath,pixels):
     global NCOLS
-    global DEBUG
     #==Operate Image==#
     lenPixel=len(pixels)
     width=int(math.sqrt(lenPixel))
@@ -190,7 +188,7 @@ def createImage(sourcePath,pixels):
     #==Save Image==#
     #Show Image(Unused) #nim.show()
     nImage.save(os.path.basename(sourcePath)+'.png')
-    if DEBUG:print(nImage,nImage.format)
+    #print(nImage,nImage.format)
     print(gsbl("Image File created!","\u56fe\u7247\u6587\u4ef6\u5df2\u521b\u5efa\uff01"))
 
 #For pixel: 0xaarrggbb -> 0xaabbggrr
@@ -227,11 +225,7 @@ def readImage(path):
 
 def readBinary(path):return open(path,'rb')#raises error
 
-def printExcept(exc,funcPointer):
-    global DEBUG
-    tb=""
-    if DEBUG:"\n"+traceback.format_exc()
-    else: print(funcPointer+gsbl("A exception was found:","\u53d1\u73b0\u5f02\u5e38\uff1a"),exc)
+def printExcept(exc,funcPointer):print(funcPointer+gsbl("A exception was found:","\u53d1\u73b0\u5f02\u5e38\uff1a"),exc,"\n"+traceback.format_exc())
 
 def InputYN(head):
     yn=input(head)
@@ -256,7 +250,9 @@ def cmdLineMode():
         except FileNotFoundError:
             print(gsbl("{} not found!","\u672a\u627e\u5230{}\uff01").format('\"'+path+'\"'))
             numExcept=numExcept+1
-        except BaseException as e:printExcept(e,"readText()->")
+        except BaseException as e:
+            printExcept(e,"readText()->")
+            numExcept=numExcept+1
         if numExcept>0 and InputYN(gsbl("Do you want to terminate the program?","\u4f60\u60f3\u7ec8\u6b62\u7a0b\u5e8f\u5417\uff1f")+"Y/N:"):break
         print()#new line
 
@@ -277,4 +273,4 @@ try:
                     numExcept=numExcept+1
         else:cmdLineMode()
 except BaseException as e:printExcept(e,"main->")
-if numExcept>0 and InputYN((gsbl("{} errors found.Do you need to switch to command line mode?","\u53d1\u73b0\u4e86{}\u4e2a\u9519\u8bef\u3002\u4f60\u9700\u8981\u5207\u6362\u5230\u547d\u4ee4\u884c\u6a21\u5f0f\u5417\uff1f")+"Y/N:").format(numExcept)):cmdLineMode()
+if numExcept>0 and InputYN((gsbl("{} exception found.Do you need to switch to command line mode?","\u53d1\u73b0\u4e86{}\u4e2a\u7ec8\u6b62\u3002\u4f60\u9700\u8981\u5207\u6362\u5230\u547d\u4ee4\u884c\u6a21\u5f0f\u5417\uff1f")+"Y/N:").format(numExcept)):cmdLineMode()
