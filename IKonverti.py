@@ -113,21 +113,25 @@ def autoConver(path,forceImage=False):
     #====Define====#
     currentFile=autoReadFile(path,forceImage)
     if type(currentFile)=="PIL.PngImagePlugin.PngImageFile":
+        print(gsbl("Image file read successfully!","\u56fe\u50cf\u6587\u4ef6\u8bfb\u53d6\u6210\u529f\uff01"))
         try:dealFromImage(currentFile,path)
         except BaseException as e:printExcept(e,"autoConver()->")
         else:return
     if (not forceImage) and type(currentFile)!='image':
-        print(gsbl("Faild to load image ","\u8bfb\u53d6\u56fe\u50cf\u5931\u8d25")+"\""+path+"\","+gsbl("now try to load as binary","\u73b0\u5728\u5c1d\u8bd5\u8bfb\u53d6\u4e8c\u8fdb\u5236\u6570\u636e"))
+        print(gsbl("Faild to load image {},now try to load as binary","\u8bfb\u53d6\u56fe\u50cf"+"{}"+"\u5931\u8d25\uff0c\u73b0\u5728\u5c1d\u8bd5\u8bfb\u53d6\u4e8c\u8fdb\u5236\u6570\u636e").format("\""+path+"\""))
     dealFromBinary(path,readBinary(path))
 
 def dealFromBinary(path,binaryFile):
     #========From Binary========#
     if binaryFile==None:
-        print(gsbl("Faild to load binary","\u8bfb\u53d6\u4e8c\u8fdb\u5236\u6570\u636e\u5931\u8d25")+" \""+path+"\"")
+        print(gsbl("Faild to load binary {}","\u8bfb\u53d6\u4e8c\u8fdb\u5236\u6587\u4ef6"+"{}"+"\u5931\u8d25").format("\""+path+"\""))
         return
-    print(gsbl("PATH","\u8def\u5f84")+":"+path+","+gsbl("FILE","\u6587\u4ef6")+":",binaryFile)
+    #print(gsbl("PATH","\u8def\u5f84")+":"+path+","+gsbl("FILE","\u6587\u4ef6")+":",binaryFile)
     #====1 Convert Binary and 2 Insert Pixel====#
-    pixels=binaryToPixels(binaryFile.read())
+    bRead=binaryFile.read()
+    if bRead!=None:
+        print(gsbl("Binary file read successfully!","\u4e8c\u8fdb\u5236\u6587\u4ef6\u8bfb\u53d6\u6210\u529f\uff01"))
+        pixels=binaryToPixels(bRead)
     #====Close File====#
     binaryFile.close()
     #====3 Create Image====#
@@ -225,28 +229,35 @@ def readBinary(path):return open(path,'rb')#raises error
 
 def printExcept(exc,funcPointer):
     global DEBUG
-    if DEBUG:print(funcPointer+"Find a exception:",exc,"\n"+traceback.format_exc())
-    else: print(funcPointer+"Find a exception:",exc)
+    tb=""
+    if DEBUG:"\n"+traceback.format_exc()
+    else: print(funcPointer+gsbl("A exception was found:","\u53d1\u73b0\u5f02\u5e38\uff1a"),exc)
 
 def InputYN(head):
     yn=input(head)
     if not bool(yn):return False
     return yn.lower()=='y' or yn.lower()=="yes" or yn.lower()=="true" or yn in '\u662f\u9633\u967d\u5bf9\u6b63\u771f'
 
+numExcept=0
+
 def cmdLineMode():
+    global numExcept
     print("<===="+SELF_NAME+" v"+VERSION+"====>")
     while(True):
         try:
-            path=inputBL("Please choose PATH:","\u8bf7\u8f93\u5165\u8def\u5f84\uff1f")
+            numExcept=0
+            path=inputBL("Please insert PATH:","\u8bf7\u8f93\u5165\u8def\u5f84\uff1a")
             fileImf=readFile(path)
             code_=fileImf[0]
             bina_=fileImf[1]
             if code_==0 or (code_>0 and InputYN(gsbl("Force compress to Image?","\u5f3a\u5236\u8f6c\u6362\u6210\u56fe\u50cf\uff1f")+"Y/N:")):dealFromBinary(path,bina_)
             elif code_>0:dealFromImage(fileImf[2],path)
             else:raise bina_#exception at here
-        except BaseException as e:
-            printExcept(e,"readText()->")
-            if InputYN(gsbl("Do you want to terminate the program?","\u4f60\u9700\u8981\u7ec8\u6b62\u7a0b\u5e8f\u5417\uff1f")+"Y/N:"):break
+        except FileNotFoundError:
+            print(gsbl("{} not found!","\u672a\u627e\u5230{}\uff01").format('\"'+path+'\"'))
+            numExcept=numExcept+1
+        except BaseException as e:printExcept(e,"readText()->")
+        if numExcept>0 and InputYN(gsbl("Do you want to terminate the program?","\u4f60\u60f3\u7ec8\u6b62\u7a0b\u5e8f\u5417\uff1f")+"Y/N:"):break
         print()#new line
 
 try:
@@ -254,12 +265,16 @@ try:
     if __name__=='__main__':
         import sys
         if len(sys.argv)>1:
+            for file_path in sys.argv[1:]:
                 try:
-                    for file_path in sys.argv[1:]:
-                        autoConver(file_path)
-                        print()
+                    autoConver(file_path)
+                    print()
+                except FileNotFoundError:
+                    print(gsbl("{} not found!","\u672a\u627e\u5230{}\uff01").format('\"'+file_path+'\"'))
+                    numExcept=numExcept+1
                 except BaseException as error:
                     printExcept(error,"main->")
-                    if(InputYN(gsbl("Do you need to switch to command line mode?","\u4f60\u9700\u8981\u5207\u6362\u5230\u547d\u4ee4\u884c\u6a21\u5f0f\u5417\uff1f")+"Y/N:")):cmdLineMode()
+                    numExcept=numExcept+1
         else:cmdLineMode()
 except BaseException as e:printExcept(e,"main->")
+if numExcept>0 and InputYN((gsbl("{} errors found.Do you need to switch to command line mode?","\u53d1\u73b0\u4e86{}\u4e2a\u9519\u8bef\u3002\u4f60\u9700\u8981\u5207\u6362\u5230\u547d\u4ee4\u884c\u6a21\u5f0f\u5417\uff1f")+"Y/N:").format(numExcept)):cmdLineMode()
