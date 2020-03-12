@@ -3,8 +3,8 @@
 block_cipher = None
 
 
-a = Analysis(['IConver.py'],
-             pathex=['C:\\A137442\\Python\\IConver'],
+a = Analysis(['IKonverti.py'],
+             pathex=['C:\\A137442\\Python\\IKonverti'],
              binaries=[],
              datas=[],
              hiddenimports=[],
@@ -23,7 +23,7 @@ exe = EXE(pyz,
           a.zipfiles,
           a.datas,
           [],
-          name='IConver',
+          name='IKonverti',
           debug=False,
           bootloader_ignore_signals=False,
           strip=False,

@@ -36,6 +36,7 @@ Image to binary:
 
 DEBUG=True
 NCOLS=70
+SELF_NAME='IKonverti'
 VERSION='1.2.5'
 
 #Language about
@@ -97,9 +98,21 @@ def readFile(path):
     except BaseException as error:return (-1,error,None)
 #return (code,binary or error,image or None)
 
-def autoConver(currentFile,path,forceImage=False):
+def autoReadFile(path,asBinary=False):
+    try:
+        file0=readImage(path)
+        if file0==None:
+            file0=readBinary(path)
+            if file0==None:return None
+            return file0
+        elif asBinary:return readBinary(path)
+        else:return file0
+    except BaseException as e:return None
+
+def autoConver(path,forceImage=False):
     #====Define====#
-    if currentFile!=None:
+    currentFile=autoReadFile(path,forceImage)
+    if type(currentFile)=="PIL.PngImagePlugin.PngImageFile":
         try:dealFromImage(currentFile,path)
         except BaseException as e:printExcept(e,"autoConver()->")
         else:return
@@ -121,7 +134,6 @@ def dealFromBinary(path,binaryFile):
     createImage(path,pixels)
 
 def dealFromImage(imageFile,path):
-    print(gsbl("PATH","\u8def\u5f84")+":"+path+","+gsbl("FILE","\u6587\u4ef6")+":",imageFile,imageFile.format)
     #========From Image========#
     #====1 Convert Image to Pixel,and Get Length====#
     PaL=getPixelsAndLength(imageFile)
@@ -218,10 +230,11 @@ def printExcept(exc,funcPointer):
 
 def InputYN(head):
     yn=input(head)
+    if not bool(yn):return False
     return yn.lower()=='y' or yn.lower()=="yes" or yn.lower()=="true" or yn in '\u662f\u9633\u967d\u5bf9\u6b63\u771f'
 
 def cmdLineMode():
-    print("<====IConver v"+VERSION+"====>")
+    print("<===="+SELF_NAME+" v"+VERSION+"====>")
     while(True):
         try:
             path=inputBL("Please choose PATH:","\u8bf7\u8f93\u5165\u8def\u5f84\uff1f")
@@ -246,7 +259,7 @@ try:
                         autoConver(file_path)
                         print()
                 except BaseException as error:
-                    printExcept(e,"main->")
+                    printExcept(error,"main->")
                     if(InputYN(gsbl("Do you need to switch to command line mode?","\u4f60\u9700\u8981\u5207\u6362\u5230\u547d\u4ee4\u884c\u6a21\u5f0f\u5417\uff1f")+"Y/N:")):cmdLineMode()
         else:cmdLineMode()
 except BaseException as e:printExcept(e,"main->")
