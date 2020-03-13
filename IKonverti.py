@@ -1,7 +1,9 @@
-from PIL import Image
+import errno
 import math
 import os
 import traceback
+
+from PIL import Image
 from tqdm import tqdm
 
 '''
@@ -52,6 +54,8 @@ def getStrByLanguage(en='',zh=''):
 def gsbl(en='',zh=''):return getStrByLanguage(en=en,zh=zh)
 def prbl(en='',zh=''):return print(gsbl(en=en,zh=zh))
 def inputBL(en='',zh=''):return input(gsbl(en=en,zh=zh))
+def printPath(message,path):return print(message.format('\"'+path+'\"'))
+def printPathBL(path,en,zh):return printPath(gsbl(en=en,zh=zh),path=path)
 
 #aa,rr,gg,bb -> 0xaarrggbb
 def binaryToPixels(binary):#bytes b
@@ -99,32 +103,31 @@ def readFile(path):
 
 def autoReadFile(path,asBinary=False):
     try:
-        file0=readImage(path)
-        if file0==None:
-            file0=readBinary(path)
-            if file0==None:return None
-            return file0
-        elif asBinary:return readBinary(path)
-        else:return file0
-    except BaseException as e:return None
+        if not asBinary:file0=readImage(path)
+        elif file0==None:file0=readBinary(path)
+        return file0
+    except BaseException as e:
+        printExcept(e,"autoReadFile()->")
+        return None
 
 def autoConver(path,forceImage=False):
     #====Define====#
     currentFile=autoReadFile(path,forceImage)
-    if type(currentFile)=="PIL.PngImagePlugin.PngImageFile":
+    print(path,forceImage,type(currentFile),Image.isImageType(currentFile))
+    if Image.isImageType(currentFile):
         print(gsbl(en="Image file read successfully!",zh="\u56fe\u50cf\u6587\u4ef6\u8bfb\u53d6\u6210\u529f\uff01"))
         try:converImageToBinary(currentFile,path)
         except BaseException as e:printExcept(e,"autoConver()->")
         else:return
-    if (not forceImage) and type(currentFile)!='image':
-        print(gsbl(en="Faild to load image {},now try to load as binary",zh="\u8bfb\u53d6\u56fe\u50cf"+"{}"+"\u5931\u8d25\uff0c\u73b0\u5728\u5c1d\u8bd5\u8bfb\u53d6\u4e8c\u8fdb\u5236\u6570\u636e").format("\""+path+"\""))
+    if (not forceImage) and not Image.isImageType(currentFile):
+        print(gsbl(en="Faild to load image {},now try to load as binary",zh="\u8bfb\u53d6\u56fe\u50cf{}\u5931\u8d25\uff0c\u73b0\u5728\u5c1d\u8bd5\u8bfb\u53d6\u4e8c\u8fdb\u5236\u6570\u636e").format("\""+path+"\""))
     converBinaryToImage(path,readBinary(path))
 
 #binaryFile:A BufferedReader or bytes(will set to bRead),Image(will convert to bytes)
 def converBinaryToImage(path,binaryFile,returnBytes=False,compressMode=False):
     #========From Binary========#
     if binaryFile==None:
-        print(gsbl(en="Faild to load binary {}",zh="\u8bfb\u53d6\u4e8c\u8fdb\u5236\u6587\u4ef6"+"{}"+"\u5931\u8d25").format("\""+path+"\""))
+        print(gsbl(en="Faild to load binary {}",zh="\u8bfb\u53d6\u4e8c\u8fdb\u5236\u6587\u4ef6{}\u5931\u8d25").format("\""+path+"\""))
         return
     elif type(binaryFile)==bytes:bRead=binaryFile
     elif isinstance(binaryFile,Image.Image):bRead=binaryFile.tobytes()
@@ -267,8 +270,11 @@ def generateFileName(originPath):
     return baseName+'.txt'
 
 def readImage(path):
-    try:return Image.open(path)
-    except:return None
+    ima=None
+    try:ima=Image.open(path)
+    except BaseException as e:
+        if ima!=None:ima.close()
+    return ima
 
 def readBinary(path):return open(path,'rb')#raises error
 
@@ -292,17 +298,26 @@ def cmdLineMode():
             code_=fileImf[0]
             bina_=fileImf[1]
             #Binary -> Image
-            compressMode=InputYN(gsbl(en="Enable compression mode?",zh="\u542f\u7528\u538b\u7f29\u6a21\u5f0f\uff1f")+"Y/N:")
+            if code_>0:compressMode=InputYN(gsbl(en="Enable compression mode?",zh="\u542f\u7528\u538b\u7f29\u6a21\u5f0f\uff1f")+"Y/N:")
             if code_==0 or (code_>0 and InputYN(gsbl(en="Force compress to Image?",zh="\u5f3a\u5236\u8f6c\u6362\u6210\u56fe\u50cf\uff1f")+"Y/N:")):
                 converBinaryToImage(path,bina_,compressMode=compressMode)
             #Image -> Binary
             elif code_>0:converImageToBinary(fileImf[2],path,compressMode=False)#compressMode
             else:raise bina_#exception at here
         except FileNotFoundError:
-            print(gsbl(en="{} not found!",zh="\u672a\u627e\u5230{}\uff01").format('\"'+path+'\"'))
+            printPathBL(en="{} not found!",zh="\u672a\u627e\u5230{}\uff01",path=path)
+            numExcept=numExcept+1
+        except OSError as err:
+            if err.errno==errno.ENOENT:printPathBL(en="{} read/write faild!",zh="\u8bfb\u5199{}\u5931\u8d25\uff01",path=path)
+            elif err.errno==errno.EPERM:printPathBL(en="Permission denied!",zh="\u8bbf\u95ee\u88ab\u62d2\u7edd\uff01",path=path)
+            elif err.errno==errno.EISDIR:printPathBL(en="{} is a directory!",zh="{}\u662f\u4e00\u4e2a\u76ee\u5f55\uff01",path=path)
+            elif err.errno==errno.ENOSPC:printPathBL(en="Not enough equipment space!",zh="\u8bbe\u5907\u7a7a\u95f4\u4e0d\u8db3\uff01",path=path)
+            elif err.errno==errno.ENAMETOOLONG:printPathBL(en="The File name is too long!",zh="\u6587\u4ef6\u540d\u8fc7\u957f\uff01",path=path)
+            elif err.errno==errno.EINVAL:printPathBL(en="Invalid File name: {}",zh="\u6587\u4ef6\u540d\u65e0\u6548\uff1a{}",path=path)
+            else:printPathBL(en="Reading/Writeing {} error!",zh="\u8bfb\u5199\u6587\u4ef6{}\u9519\u8bef\uff01",path=path)
             numExcept=numExcept+1
         except BaseException as e:
-            printExcept(e,"readText()->")
+            printExcept(e,"cmdLineMode()->")
             numExcept=numExcept+1
         if numExcept>0 and InputYN(gsbl(en="Do you want to terminate the program?",zh="\u4f60\u60f3\u7ec8\u6b62\u7a0b\u5e8f\u5417\uff1f")+"Y/N:"):break
         numExcept=0
