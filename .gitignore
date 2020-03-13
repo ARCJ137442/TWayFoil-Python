@@ -7,6 +7,10 @@ bin-release/
 [Dd]ist/
 __pycache__/
 *.lnk
+*.zip
+*.rar
+*.7z
+*.gz
 
 # Windows:
 Thumbs.db

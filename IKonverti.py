@@ -95,7 +95,8 @@ def readFile(path):
         file0=readImage(path)
         if file0==None:
             file0=readBinary(path)
-            if file0==None:return (-1,FileNotFoundError(path),None)
+            if file0==None:
+                return (-1,FileNotFoundError(path),None)
             return (0,file0,None)
         else:return (1,readBinary(path),file0)
     except BaseException as error:return (-1,error,None)
@@ -106,7 +107,6 @@ def autoReadFile(path,forceImage=False):
         file0=readImage(path)
         if forceImage:file0=readImage(path)
         elif file0==None:file0=readBinary(path)
-        print("file0=",file0)
         return file0
     except BaseException as e:
         printExcept(e,"autoReadFile()->")
@@ -149,7 +149,7 @@ def converBinaryToImage(path,binaryFile,returnBytes=False,message=None,compressM
     return createImageFromPixels(path,pixels,message=message)
 #return (image,bytes)
 
-#imageFile
+#imageFile is FileReader
 def converImageToBinary(imageFile,path,compressMode=False,message=True):
     #========From Image========#
     #====1 Convert Image to Pixel,and Get Length====#
@@ -158,7 +158,10 @@ def converImageToBinary(imageFile,path,compressMode=False,message=True):
     pixels=PaL[1]
     #====2 Convert Pixel to Binary and 3 Delete the L Byte====#
     binary=pixelsToBinary(pixels)
-    if compressMode:return releaseFromImage(path,imageFile)
+    if compressMode:
+        result=releaseFromImage(path,imageFile)
+        imageFile.close()
+        return (None,imageFile,None)
     if tailLength>0:
         for i in range(tailLength):binary.pop()
     #====4 Create Binary File and Return====#
@@ -187,7 +190,6 @@ def releaseFromImage(path,image):
     tPath='temp_'+path
     oResult=converImageToBinary(imageFile=image,path=tPath,message=False,compressMode=False)#(image,bytes)
     while True:
-        print("路径：",tPath)
         try:nResult=converImageToBinary(imageFile=oResult[0],path=tPath,compressMode=False,message=False)
         except BaseException as e:
             #printExcept(e,"releaseFromImage/while()->")
@@ -264,7 +266,7 @@ def createBinaryFile(binary,path,message=True,compressMode=False):#bytes binary,
         return (None,None,None)
     #==Return,may Close File==#
     if message:#not close
-        printPathBL(path=path,en="Binary File {} generated!",zh="\u4e8c\u8fdb\u5236\u6587\u4ef6{}\u5df2\u751f\u6210\uff01")
+        printPathBL(path=fileName,en="Binary File {} generated!",zh="\u4e8c\u8fdb\u5236\u6587\u4ef6{}\u5df2\u751f\u6210\uff01")
     file=open(fileName,'rb+',-1)
     return (image,file,file.read())
 #return tuple(image,file,fileBytes)
