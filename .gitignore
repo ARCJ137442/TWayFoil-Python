@@ -8,6 +8,17 @@ bin-release/
 __pycache__/
 *.lnk
 
+# Windows:
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Python:
+*.py[cod]
+*.so
+*.egg
+*.egg-info
+
 # VS Code
 .vscode/
 .code-workspace

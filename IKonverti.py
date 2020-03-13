@@ -38,7 +38,7 @@ Image to binary:
 
 NCOLS=70
 SELF_NAME='IKonverti'
-VERSION='1.3.0'
+VERSION='1.3.1'
 
 #Language about
 SYSTEM_LANGUAGE=0
@@ -116,7 +116,9 @@ def autoConver(path,forceImage=False):
     print(path,forceImage,type(currentFile),Image.isImageType(currentFile))
     if Image.isImageType(currentFile):
         print(gsbl(en="Image file read successfully!",zh="\u56fe\u50cf\u6587\u4ef6\u8bfb\u53d6\u6210\u529f\uff01"))
-        try:converImageToBinary(currentFile,path)
+        try:
+            result=converImageToBinary(currentFile,path)
+            result[1].close()
         except BaseException as e:printExcept(e,"autoConver()->")
         else:return
     if (not forceImage) and not Image.isImageType(currentFile):
@@ -134,7 +136,7 @@ def converBinaryToImage(path,binaryFile,returnBytes=False,compressMode=False):
     else:bRead=binaryFile.read()
     #====Convert Binary and Insert Pixel====#
     if bRead!=None:
-        if compressMode:return compressBinary(path,bRead)
+        if compressMode:return compressFromBinary(path,bRead)
         print(gsbl(en="Binary file read successfully!",zh="\u4e8c\u8fdb\u5236\u6587\u4ef6\u8bfb\u53d6\u6210\u529f\uff01"))
         pixels=binaryToPixels(bRead)
     #====Close File====#
@@ -143,6 +145,7 @@ def converBinaryToImage(path,binaryFile,returnBytes=False,compressMode=False):
     return createImageFromPixels(path,pixels,message=returnBytes)
 #return (image,bytes)
 
+#imageFile
 def converImageToBinary(imageFile,path,compressMode=False):
     #========From Image========#
     #====1 Convert Image to Pixel,and Get Length====#
@@ -151,28 +154,15 @@ def converImageToBinary(imageFile,path,compressMode=False):
     pixels=PaL[1]
     #====2 Convert Pixel to Binary and 3 Delete the L Byte====#
     binary=pixelsToBinary(pixels)
-    if compressMode:return releaseFromImage(path,binary)
+    if compressMode:return releaseFromImage(path,imageFile)
     if tailLength>0:
         for i in range(tailLength):binary.pop()
     #====4 Create Binary File and Return====#
     imageFile.close()
-    return createBinaryFile(bytes(binary),path,message=compressMode)
+    return createBinaryFile(bytes(binary),path,message=not compressMode)
+#return (image,file,fileBytes) the file in returns[1] need to close!
 
-def releaseFromImage(path,image):
-    #TODO
-    oResult=converImageToBinary(imageFile=image,path='temp_'+path)#(image,bytes)
-    while True:
-        nResult=converImageToBinary(imageFile=oResult[1],path='temp_'+path)
-        print("路径：",'temp_'+path)
-        if nResult[0]==None:
-            nResult[1].close()
-            break
-    createBinaryFile(oResult[2],path,message=True)#required not closed file
-    oResult[1].close()#close at there
-    print(gsbl(en="Binary File created!",zh="\u56fe\u7247\u6587\u4ef6\u5df2\u521b\u5efa\uff01"))
-    return None
-
-def compressBinary(path,binary):
+def compressFromBinary(path,binary):
     oResult=converBinaryToImage(binaryFile=binary,path=path)#(image,bytes)
     lengthN=-1
     while True:
@@ -185,16 +175,35 @@ def compressBinary(path,binary):
         oResult=nResult
     oResult[0].save(path+'.png')#required not closed image
     oResult[0].close()#close at there
-    print(gsbl(en="Image File created!",zh="\u56fe\u7247\u6587\u4ef6\u5df2\u521b\u5efa\uff01"))
+    print(gsbl(en="Binary File compressed!",zh="\u4e8c\u8fdb\u5236\u6587\u4ef6\u5df2\u538b\u7f29\uff01"))
     return None
 #return (pixels,path)
 
-#image is Image.Image
+def releaseFromImage(path,image):
+    #TODO
+    oResult=converImageToBinary(imageFile=image,path='temp_'+path)#(image,bytes)
+    while True:
+        print("路径：",'temp_'+path)
+        try:nResult=converImageToBinary(imageFile=oResult[0],path='temp_'+path)
+        except BaseException as e:
+            #printExcept(e,"releaseFromImage/while()->")
+            break
+        if len(nResult[2])<1:
+            nResult[1].close()
+            break
+        oResult=nResult
+    oResult=createBinaryFile(oResult[2],generateFileNameFromImage(path,removeDotPngs=True),message=True,compressMode=False)#required not closed file
+    oResult[1].close()#close at there
+    print(gsbl(en="Image file unzipped!",zh="\u56fe\u7247\u6587\u4ef6\u5df2\u89e3\u538b\uff01"))
+    return None
+
+#image is Image.Image,alse can be a list of pixels
 def getPixelsAndLength(image):
     global NCOLS
     result=[0,[]]
     isFirst=True
-    pixList=list(image.getdata())
+    if isinstance(image,list):pixList=image
+    else:pixList=list(image.getdata())
     processBar=tqdm(total=len(pixList),desc=gsbl('Scanning','\u626b\u63cf\u4e2d')+': ',ncols=NCOLS)
     for pixel in pixList:
         color=RGBAtoPixel(pixel)
@@ -231,25 +240,24 @@ def createImageFromPixels(sourcePath,pixels,message=True):
     if message:print(gsbl(en="Image File created!",zh="\u56fe\u7247\u6587\u4ef6\u5df2\u521b\u5efa\uff01"))
 #return (image,imageBytes)
 
-def createBinaryFile(binary,path,message=True):#bytes binary,str path
-    #Build Text
+def createBinaryFile(binary,path,message=True,compressMode=False):#bytes binary,str path
     try:
-        if message:fileName=generateFileName(path)
+        if compressMode:fileName=generateFileNameFromImage(path)
         else:fileName=path
         file=open(fileName,'wb',-1)
         file.write(binary)
+        file.close()
         try:image=Image.open(fileName)
         except:image=None
     except BaseException as exception:
         printExcept(exception,"createBinaryFile()->")
         return (None,None,None)
     #==Return,may Close File==#
-    if message:
-        file.close()#not close in compress mode
-        print(gsbl(en="Binary File generated!",zh="\u4e8c\u8fdb\u5236\u6587\u4ef6\u5df2\u751f\u6210\uff01"))
-    file=open(fileName,'rb',-1)
+    if message:#not close
+        prbl(en="Binary File generated!",zh="\u4e8c\u8fdb\u5236\u6587\u4ef6\u5df2\u751f\u6210\uff01")
+    file=open(fileName,'rb+',-1)
     return (image,file,file.read())
-#return tuple(image,file,image.bytes)
+#return tuple(image,file,fileBytes)
 
 #For pixel: 0xaarrggbb -> 0xaabbggrr
 def RGBAtoBGRA(pixel):return ((pixel&0xff0000)>>16)|((pixel&0xff)<<16)|(pixel&0xff00ff00)
@@ -264,10 +272,15 @@ def RGBAtoPixel(color):
     else:alpha=color[3]<<24
     return alpha|(color[0]<<16)|(color[1]<<8)|color[2]
 
-def generateFileName(originPath):
+def generateFileNameFromImage(originPath,removeDotPngs=False):
     baseName=os.path.basename(originPath)
-    if baseName.count('.')>1:return baseName[0:baseName.rindex('.')]
-    return baseName+'.txt'
+    if baseName.count('.')>1:
+        baseName=baseName[0:baseName.rindex('.')]
+    else:
+        baseName+='.txt'
+    if removeDotPngs:
+        while baseName[-4:]=='.png':baseName=baseName[:-4]
+    return baseName
 
 def readImage(path):
     ima=None
@@ -280,9 +293,10 @@ def readBinary(path):return open(path,'rb')#raises error
 
 def printExcept(exc,funcPointer):print(funcPointer+gsbl(en="A exception was found:",zh="\u53d1\u73b0\u5f02\u5e38\uff1a"),exc,"\n"+traceback.format_exc())
 
-def InputYN(head):
+def InputYN(head,defaultFalse=True):
     yn=input(head)
     if not bool(yn):return False
+    elif defaultFalse and (yn.lower()=='n' or yn.lower()=="no" or yn.lower()=="false" or yn in '\u5426\u9634\u9682\u9519\u53cd\u5047'):return False
     return yn.lower()=='y' or yn.lower()=="yes" or yn.lower()=="true" or yn in '\u662f\u9633\u967d\u5bf9\u6b63\u771f'
 
 numExcept=0
@@ -298,12 +312,16 @@ def cmdLineMode():
             code_=fileImf[0]
             bina_=fileImf[1]
             #Binary -> Image
-            if code_>0:compressMode=InputYN(gsbl(en="Enable compression mode?",zh="\u542f\u7528\u538b\u7f29\u6a21\u5f0f\uff1f")+"Y/N:")
+            if code_>=0:
+                compressMode=InputYN(gsbl(en="Enable compression mode?",zh="\u542f\u7528\u538b\u7f29\u6a21\u5f0f\uff1f")+"Y/N:")
             if code_==0 or (code_>0 and InputYN(gsbl(en="Force compress to Image?",zh="\u5f3a\u5236\u8f6c\u6362\u6210\u56fe\u50cf\uff1f")+"Y/N:")):
                 converBinaryToImage(path,bina_,compressMode=compressMode)
             #Image -> Binary
-            elif code_>0:converImageToBinary(fileImf[2],path,compressMode=False)#compressMode
-            else:raise bina_#exception at here
+            elif code_>0:
+                result=converImageToBinary(fileImf[2],path,compressMode=compressMode)
+                if result!=None and result[1]!=None:result[1].close()
+            else:
+                raise bina_#exception at here
         except FileNotFoundError:
             printPathBL(en="{} not found!",zh="\u672a\u627e\u5230{}\uff01",path=path)
             numExcept=numExcept+1
@@ -319,7 +337,8 @@ def cmdLineMode():
         except BaseException as e:
             printExcept(e,"cmdLineMode()->")
             numExcept=numExcept+1
-        if numExcept>0 and InputYN(gsbl(en="Do you want to terminate the program?",zh="\u4f60\u60f3\u7ec8\u6b62\u7a0b\u5e8f\u5417\uff1f")+"Y/N:"):break
+        if numExcept>0 and InputYN(gsbl(en="Do you want to terminate the program?",zh="\u4f60\u60f3\u7ec8\u6b62\u7a0b\u5e8f\u5417\uff1f")+"Y/N:"):
+            break
         numExcept=0
         print()#new line
 
@@ -333,11 +352,14 @@ try:
                     autoConver(file_path)
                     print()
                 except FileNotFoundError:
-                    print(gsbl(en="{} not found!",zh="\u672a\u627e\u5230{}\uff01").format('\"'+file_path+'\"'))
+                    printPathBL(en="{} not found!",zh="\u672a\u627e\u5230{}\uff01",path=file_path)
                     numExcept=numExcept+1
                 except BaseException as error:
                     printExcept(error,"main->")
                     numExcept=numExcept+1
-        else:cmdLineMode()
-except BaseException as e:printExcept(e,"main->")
-if numExcept>0 and InputYN((gsbl(en="{} exceptions found.\nDo you need to switch to command line mode?",zh="\u53d1\u73b0\u4e86{}\u4e2a\u5f02\u5e38\u3002\u4f60\u9700\u8981\u5207\u6362\u5230\u547d\u4ee4\u884c\u6a21\u5f0f\u5417\uff1f")+"Y/N:").format(numExcept)):cmdLineMode()
+        else:
+            cmdLineMode()
+except BaseException as e:
+    printExcept(e,"main->")
+if numExcept>0 and InputYN((gsbl(en="{} exceptions found.\nDo you need to switch to command line mode?",zh="\u53d1\u73b0\u4e86{}\u4e2a\u5f02\u5e38\u3002\u4f60\u9700\u8981\u5207\u6362\u5230\u547d\u4ee4\u884c\u6a21\u5f0f\u5417\uff1f")+"Y/N:").format(numExcept)):
+    cmdLineMode()
