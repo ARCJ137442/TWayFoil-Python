@@ -124,7 +124,7 @@ def autoConver(path,forceImage=False):
         except BaseException as e:printExcept(e,"autoConver()->")
         else:return
     if (not forceImage) and not Image.isImageType(currentFile):
-        printPathBL(en="Faild to load image {},now try to load as binary",zh="\u8bfb\u53d6\u56fe\u50cf{}\u5931\u8d25\uff0c\u73b0\u5728\u5c1d\u8bd5\u8bfb\u53d6\u4e8c\u8fdb\u5236\u6570\u636e",path=path)
+        printPathBL(en="Now try to load {} as binary",zh="\u73b0\u5728\u5c1d\u8bd5\u8bfb\u53d6\u4e8c\u8fdb\u5236\u6570\u636e {}",path=path)
     converBinaryToImage(path=path,binaryFile=readBinary(path),returnBytes=False,compressMode=False,message=True)
 
 #binaryFile:A BufferedReader or bytes(will set to bRead),Image(will convert to bytes)
