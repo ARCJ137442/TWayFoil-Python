@@ -7,53 +7,27 @@ from PIL import Image
 from tqdm import tqdm
 
 '''
-Binary to image:
-     1.Convert byte array to 32-bit pixel int array
-         For example: [0xff,0x76,0x00,0x3a,0x98,0x1d,0xcb] (len=7)-> [0xff76003a,0x981dcb00] (len=2)
-     2.Insert the length pixel (len (byte)% 4,0x1 in the example) in the first bit of the int array
-     3. Create a picture from an int array
-Image to binary:
-     1.Convert image to array of length L and 32-bit pixel int
-         For example: L=3,[0x998acb6a,0x6a634bde,0x87000000]
-     2.Convert 32-bit pixel int array to byte array
-         For example: [0x998acb6a,0x6a634bde,0x87000000]-> [0x99,0x8a,0xcb,0x6a,0x6a,0x63,0x4b,0xde,0x87,0x00,0x00,0x00]
-     3. Delete the L elements at the end of the byte array
-         For example: [0x99,0x8a,0xcb,0x6a,0x6a,0x63,0x4b,0xde,0x87,0x00,0x00,0x00]-> [0x99,0x8a,0xcb,0x6a,0x6a,0x63,0x4b,0xde,0x87]
-     4. Create binary file based on byte array
-
-二进制转图像：
-    1.把byte数组转换为32位像素int数组
-        例如：[0xff,0x76,0x00,0x3a,0x98,0x1d,0xcb](len=7) -> [0xff76003a,0x981dcb00](len=2)
-    2.在int数组第一位插入长度像素(len(byte)%4,例中为0x1)
-    3.根据int数组创建图片
-图像转二进制：
-    1.把图像转换为长度L和32位像素int数组
-        例如：L=3,[0x998acb6a,0x6a634bde,0x87000000]
-    2.把32位像素int数组转换为byte数组
-        例如：[0x998acb6a,0x6a634bde,0x87000000] -> [0x99,0x8a,0xcb,0x6a,0x6a,0x63,0x4b,0xde,0x87,0x00,0x00,0x00]
-    3.删除byte数组末尾的L个元素
-        例如：[0x99,0x8a,0xcb,0x6a,0x6a,0x63,0x4b,0xde,0x87,0x00,0x00,0x00] -> [0x99,0x8a,0xcb,0x6a,0x6a,0x63,0x4b,0xde,0x87]
-    4.根据byte数组创建二进制文件
-
-    2.0.0 想法202003152029:
+    2.0.0 核心(202003152029):
     引言：
         四字节转一像素的规定：四个字节(0x78,0xf1,0xd1,0x9a)按0->a,1->r,2->g,b->3转换为AARRGGBB颜色(0x78f1d19a)
         核心：在图片的像素列表中，取最后一个像素的最后一位当做末端像素的多余字节数，并删除末尾多余像素长度
         image.tobytes返回可枚举的、包含所有像素颜色的bytes列表
-        例如image.bytes=b'0x7f/0x44/0xaf/0x7d/0x1a/0x89/0x11/0x56/0xac/0xcc/0xab/0x67/0xfa/0xda/0xcb/0x67/0x09/0x87/0x4a/0x03'
+        例如image.bytes=b'0x7f/0x44/0xaf/0x7d/0x1a/0x89/0x11/0x56/0xac/0xcc/0xab/0x67/0xfa/0xda/0xcb/0x67/0x09/0x87/0x4a/0xc8/0x75/0x6d/0x00/0x02'
     关于图像转字节码的功能
         表示的原字节码总长为4之倍：
-            -> 7f ad 1a 86 ab 6a 87 03 00 00 00 00 | 原像素列表,注1
-            -> 7f ad 1a 86 ab 6a 87 03 00 00 00 00 | L=0，末端没有无意义字节
-            -> 7f ad 1a 86 ab 6a 87 03 | 删除最后一个像素
+            -> 7f ad 1a 86 ab 6a 87 03 00 | 原像素列表,注1
+            -> 7f ad 1a 86 ab 6a 87 03 00 00 00 04 | L=0，表示原字节码总长为4之倍数
+            -> 7f ad 1a 86 ab 6a 87 03 | 因为L=3(bin:11)，删除最后一个像素
             -> 7fad1a86,ab6a8703 | 最终像素组，上一步的字节码将被存储为二进制文件
         表示的原字节码总长非4之倍（以上image）：
-            ->  7f 44 af 7d 1a 89 11 56 ac cc ab 67 fa da cb 67 09 87 4a 03 | 原像素列表,注1
-            ->  7f 44 af 7d , 1a 89 11 56 , ac cc ab 67 , fa da cb 67 , 09 87 4a 01 | L=01，末端无意义字节的数目 注2
-            ->  7f 44 af 7d , 1a 89 11 56 , ac cc ab 67 , fa da cb 67 , 09 87 4a | L=01 删除包括末端计数字节自身的L个字节
-            ->0x7f44af7d,0x1a891156,0xacccab67,0xfadacb67,0x09874a, | 最终像素组
-            ->7f 44 af 7d 1a 89 11 56 ac cc ab 67 fa da cb 67 09 87 | 最终的二进制字节码将被存储为二进制文件
-        注：(1)本地图像的tobytes()返回的字节码总长恒为4的倍数(2)正常的L可能值为0~3，当L>4时做模处理(L=L%4)
+            -> 7f 44 af 7d 1a 89 11 56 ac cc ab 67 fa da cb 67 09 87 4a c8 75 6d 00 02 | 原像素列表，注2
+            -> 7f 44 af 7d , 1a 89 11 56 , ac cc ab 67 , fa da cb 67 , 09 87 4a c8 75 6d 00 02 | L=01， 注3
+            -> 7f 44 af 7d , 1a 89 11 56 , ac cc ab 67 , fa da cb 67 , 09 87 4a c8 75 6d | L=00 删除末端计数字节自身，并删除L个字节
+            -> 7f 44 af 7d 1a 89 11 56 ac cc ab 67 fa da cb 67 09 87 4a c8 75 6d | 最终的二进制字节码将被存储为二进制文件
+        注： 
+            (1)默认将最后一位当做位数
+            (2)本地图像的tobytes函数返回的字节码总长恒为4的倍数
+            (3)末端无意义字节（不包括自身）的数目，正常的L值为0~3
         子IDEA 1:以最后一个像素的最后两个bit(00~11)作为长度
     关于字节码转图像的功能（示例，过程相当于上一个例子的逆过程）
         字节码总长非4之倍：
@@ -65,12 +39,44 @@ Image to binary:
             ->8a 76 4f 4c 9b 7a 06 7d 9a 4e 67 00 f8 fa bd e5 ac 6d 9f 89 | 原字节码
             ->8a 76 4f 4c 9b 7a 06 7d 9a 4e 67 00 f8 fa bd e5 ac 6d 9f 89 00 00 00 00 |增加四个字节（代表一个空像素）
             ->8a764f4c,9b7a067d,9a4e6700,f8fabde5,ac6d9f89,00000000| 最终像素组，上一步的字节码将被等效存储为图片
-
+    
+    English Version:
+    Introduction:
+        Four-byte to one-pixel rule: Four bytes (0x78, 0xf1,0xd1,0x9a) are converted into AARRGGBB colors (0x78f1d19a) according to 0-> a, 1-> r, 2-> g, b-> 3
+        Core: In the pixel list of the picture, take the last bit of the last pixel as the extra bytes of the end pixel and delete the extra pixel length at the end
+        image.tobytes returns an enumerable list of bytes containing all pixel colors
+        For example image.bytes = b'0x7f / 0x44 / 0xaf / 0x7d / 0x1a / 0x89 / 0x11 / 0x56 / 0xac / 0xcc / 0xab / 0x67 / 0xfa / 0xda / 0xcb / 0x67 / 0x09 / 0x87 / 0x4a / 0xc8 / 0x75 / 0x00 / 0x02 '
+    About image to bytecode function
+        The total length of the original bytecode represented is 4 times:
+            -> 7f ad 1a 86 ab 6a 87 03 00 | Original pixel list, note 1
+            -> 7f ad 1a 86 ab 6a 87 03 00 00 00 04 | L = 0, which means that the total length of the original bytecode is a multiple of 4.
+            -> 7f ad 1a 86 ab 6a 87 03 | Because L = 3 (bin: 11), delete the last pixel
+            -> 7fad1a86, ab6a8703 | The final pixel group, the bytecode from the previous step will be stored as a binary file
+        The total length of the original bytecode represented is not 4 times (the above image):
+            -> 7f 44 af 7d 1a 89 11 56 ac cc ab 67 fa da cb 67 09 87 4a c8 75 6d 00 02 | Original pixel list, note 2
+            -> 7f 44 af 7d, 1a 89 11 56, ac cc ab 67, fa da cb 67, 09 87 4a c8 75 6d 00 02 | L = 01, Note 3
+            -> 7f 44 af 7d, 1a 89 11 56, ac cc ab 67, fa da cb 67, 09 87 4a c8 75 6d | L = 00 delete the end count byte itself and delete L bytes
+            -> 7f 44 af 7d 1a 89 11 56 ac cc ab 67 fa da cb 67 09 87 4a c8 75 6d | The final binary bytecode will be stored as a binary file
+        Note: 
+            (1) The last digit is regarded as the number of digits by default
+            (2) The total length of the bytecode returned by the tobytes function of the local image is always a multiple of 4.
+            (3) the number of meaningless bytes (excluding itself) at the end, the normal L value is 0 ~ 3
+        Sub IDEA 1: Take the last two bits (00 ~ 11) of the last pixel as the length
+    About the function of bytecode to image (example, the process is equivalent to the reverse process of the previous example)
+        Total byte code length is not 4 times:
+            -> 8a 76 47 3f 4c 9b 7a 06 4b 7d 9a 4c 8e 67 00 f8 ff ca bd | Original bytecode
+            -> 8a 76 47 3f, 4c 9b 7a 06, 4b 7d 9a 4c, 8e 67 00 f8, ff ca bd 00 | Add 1 ~ 3 bytes to complete the pixel, which is L = 01 (in this example)
+            -> 8a 76 47 3f, 4c 9b 7a 06,4b 7d 9a 4c, 8e 67 00 f8, ff ca bd 01 | Modify the last byte to L ("ff ca bd 01" in this example)
+            -> 0x8a76473f, 0x4c9b7a06,0x4b7d9a4c, 0x8e6700f8,0xffcabd01 | In the final pixel group, the bytecode of the previous step will be equivalently stored as a picture
+        The total length of the bytecode is 4 times:
+            -> 8a 76 4f 4c 9b 7a 06 7d 9a 4e 67 00 f8 fa bd e5 ac 6d 9f 89 | Original bytecode
+            -> 8a 76 4f 4c 9b 7a 06 7d 9a 4e 67 00 f8 fa bd e5 ac 6d 9f 89 00 00 00 00 | Add four bytes (representing an empty pixel)
+            -> 8a764f4c, 9b7a067d, 9a4e6700, f8fabde5, ac6d9f89,00000000 | In the final pixel group, the bytecode of the previous step will be equivalently stored as a picture
 '''
 
 NCOLS=70
-SELF_NAME='IKonverti'
-VERSION='1.3.2'
+SELF_NAME='TWayFoil'
+VERSION='1.0.0'
 
 #Language about
 SYSTEM_LANGUAGE=0
@@ -88,38 +94,6 @@ def prbl(en='',zh=''):return print(gsbl(en=en,zh=zh))
 def inputBL(en='',zh=''):return input(gsbl(en=en,zh=zh))
 def printPath(message,path):return print(message.format('\"'+path+'\"'))
 def printPathBL(path,en,zh):return printPath(gsbl(en=en,zh=zh),path=path)
-
-#aa,rr,gg,bb -> 0xaarrggbb
-def binaryToPixels(binary):#bytes b
-    global NCOLS
-    binaryLength=len(binary)
-    result=[(-binaryLength)&3]#included length,4 bit in a pixel
-    j=0
-    pixel=0
-    for i in tqdm(range(binaryLength),desc=gsbl('Converting','\u8f6c\u6362\u4e2d')+': ',ncols=NCOLS):
-        if j<4:pixel|=binary[i]<<(j<<3)
-        else:
-            j=0
-            result.append(pixel)
-            pixel=binary[i]
-        j=j+1
-    if j!=0:result.append(pixel)#Add the end of byte
-    return result
-#returns int[]
-
-#0xaarrggbb -> aa,rr,gg,bb
-def pixelsToBinary(pixels):#int[] pixels
-    result=[]
-    processBar=tqdm(total=len(pixels),desc=gsbl('Converting','\u8f6c\u6362\u4e2d')+': ',ncols=NCOLS)
-    for pixel in pixels:
-        result.append(pixel&0xff)#b
-        result.append((pixel&0xff00)>>8)#g
-        result.append((pixel&0xff0000)>>16)#r
-        result.append((pixel&0xff000000)>>24)#a
-        processBar.update(1)
-    processBar.close()
-    return result
-#returns bytes
 
 #0=binary,1=image,-1=exception
 def readFile(path):
@@ -159,6 +133,38 @@ def autoConver(path,forceImage=False):
         printPathBL(en="Now try to load {} as binary",zh="\u73b0\u5728\u5c1d\u8bd5\u8bfb\u53d6\u4e8c\u8fdb\u5236\u6570\u636e {}",path=path)
     converBinaryToImage(path=path,binaryFile=readBinary(path),returnBytes=False,compressMode=False,message=True)
 
+#aa,rr,gg,bb -> 0xaarrggbb
+def binaryToPixelBytes(binary):#bytes binary
+    global NCOLS
+    result=binary
+    processBar=tqdm(range(3),desc=gsbl('Converting','\u8f6c\u6362\u4e2d'))
+    binaryLength=len(binary)
+    processBar.update(1)
+    lenMod4m3=3-binaryLength%4
+    processBar.update(1)
+    if lenMod4m3<0:
+        result=result+b'\x00\x00\x00\x03'
+    else:
+        result=result+(lenMod4m3)*b'\x00'+bytes((lenMod4m3,))
+    processBar.update(1)
+    processBar.close()
+    return result
+#returns bytes
+
+#0xaarrggbb -> aa,rr,gg,bb
+def pixelsToBinary(pixels):#int[] pixels
+    result=[]
+    processBar=tqdm(total=len(pixels),desc=gsbl('Converting','\u8f6c\u6362\u4e2d')+': ',ncols=NCOLS)
+    for pixel in pixels:
+        result.append(pixel&0xff)#b
+        result.append((pixel&0xff00)>>8)#g
+        result.append((pixel&0xff0000)>>16)#r
+        result.append((pixel&0xff000000)>>24)#a
+        processBar.update(1)
+    processBar.close()
+    return result
+#returns bytes
+
 #binaryFile:A BufferedReader or bytes(will set to bRead),Image(will convert to bytes)
 def converBinaryToImage(path,binaryFile,returnBytes=False,message=None,compressMode=False):
     #========Auto Refer========#
@@ -167,38 +173,33 @@ def converBinaryToImage(path,binaryFile,returnBytes=False,message=None,compressM
     if binaryFile==None:
         printPathBL(en="Faild to load binary {}",zh="\u8bfb\u53d6\u4e8c\u8fdb\u5236\u6587\u4ef6{}\u5931\u8d25",path=path)
         return
-    elif type(binaryFile)==bytes:bRead=binaryFile
-    elif isinstance(binaryFile,Image.Image):bRead=binaryFile.tobytes()
-    else:bRead=binaryFile.read()
+    elif type(binaryFile)==bytes:bReadBytes=binaryFile
+    elif isinstance(binaryFile,Image.Image):bReadBytes=binaryFile.tobytes()
+    else:bReadBytes=binaryFile.read()
     #====Convert Binary and Insert Pixel====#
-    if bRead!=None:
-        if compressMode:return compressFromBinary(path,bRead)
+    if bReadBytes!=None:
+        if compressMode:return compressFromBinary(path,bReadBytes)
         prbl(en="Binary file read successfully!",zh="\u4e8c\u8fdb\u5236\u6587\u4ef6\u8bfb\u53d6\u6210\u529f\uff01")
-        pixels=binaryToPixels(bRead)
+        pixelBytes=binaryToPixelBytes(bReadBytes)
     #====Close File====#
     if (not returnBytes) and type(binaryFile)!=bytes:binaryFile.close()
     #====Create Image and Return Tuple====#
-    return createImageFromPixels(path,pixels,message=message)
+    return createImageFromPixelBytes(path,pixelBytes,message=message)
 #return (image,bytes)
 
 #imageFile is FileReader
 def converImageToBinary(imageFile,path,compressMode=False,message=True):
     #========From Image========#
     #====1 Convert Image to Pixel,and Get Length====#
-    PaL=getPixelsAndLength(imageFile)
-    tailLength=PaL[0]&3#Limit the length lower than 4
-    pixels=PaL[1]
     #====2 Convert Pixel to Binary and 3 Delete the L Byte====#
-    binary=pixelsToBinary(pixels)
     if compressMode:
         result=releaseFromImage(path,imageFile)
         imageFile.close()
         return (None,imageFile,None)
-    if tailLength>0:
-        for i in range(tailLength):binary.pop()
+    pixelBytes=getFormedPixelBytes(imageFile)
     #====4 Create Binary File and Return====#
     imageFile.close()
-    return createBinaryFile(bytes(binary),path,message=message,compressMode=compressMode)
+    return createBinaryFile(pixelBytes,path,message=message,compressMode=compressMode)
 #return (image,file,fileBytes) the file in returns[1] need to close!
 
 def compressFromBinary(path,binary):
@@ -241,62 +242,68 @@ def releaseFromImage(path,image):
     return None
 
 #image is Image.Image,alse can be a list of pixels
-def getPixelsAndLength(image):
+def getFormedPixelBytes(image):
     global NCOLS
-    result=[0,[]]
-    isFirst=True
-    if isinstance(image,list):pixList=image
-    else:pixList=list(image.getdata())
-    processBar=tqdm(total=len(pixList),desc=gsbl('Scanning','\u626b\u63cf\u4e2d')+': ',ncols=NCOLS)
-    for pixel in pixList:
-        color=RGBAtoPixel(pixel)
-        if isFirst:
-            result[0]=color
-            isFirst=False
-        else:result[1].append(color)
-        processBar.update(1)
+    processBar=tqdm(total=2,desc=gsbl('Scanning','\u626b\u63cf\u4e2d')+': ',ncols=NCOLS)
+    result=image.tobytes()
+    processBar.update(1)
+    length=int(result[-1])
+    processBar.update(1)
+    result=result[:-(1+length)]
     processBar.close()
     return result
-#returns (int,int[])
+#returns bytes
 
-def createImageFromPixels(sourcePath,pixels,message=True):
+def createImageFromPixelBytes(sourcePath,pixelBytes,message=True):
     global NCOLS
     #==Operate Image==#
-    lenPixel=len(pixels)
+    #Operate pixel count
+    lenPixel=len(pixelBytes)
+    if lenPixel&3>0:
+        lenPixel=(lenPixel//4)+1
+    else:
+        lenPixel=lenPixel//4
+    #Determine size
+    processBar=tqdm(total=4,desc=gsbl('Creating','\u521b\u5efa\u4e2d')+': ',ncols=NCOLS)
     width=int(math.sqrt(lenPixel))
-    while lenPixel%width>0:width=width-1
+    while lenPixel%width>0:
+        width=width-1
     height=int(lenPixel/width)
-    nImage=Image.new("RGBA",(width,height),(0,0,0,0))
-    i=0
+    processBar.update(1)
+    #Generate image
+    nImage=Image.frombytes(data=pixelBytes,size=(width,height),mode="RGBA")
+    processBar.update(1)
     niLoad=nImage.load()
-    processBar=tqdm(total=lenPixel,desc=gsbl('Creating','\u521b\u5efa\u4e2d')+': ',ncols=NCOLS)
-    for y in range(height):
-        for x in range(width):
-            #==Write Image==#
-            niLoad[x,y]=RGBAtoBGRA(pixels[i])#The image's load need write pixel as 0xaabbggrr,I don't know why
-            i=i+1
-            processBar.update(1)
-    processBar.close()
+    processBar.update(1)
     #==Save Image==#
     nImage.save(sourcePath+'.png')
+    processBar.update(1)
+    processBar.close()
     if message:prbl(en="Image File created!",zh="\u56fe\u7247\u6587\u4ef6\u5df2\u521b\u5efa\uff01")
     return (nImage,open(sourcePath+'.png','rb').read())
-#return (image,imageBytes)
+#return (image,imageBytes) imageBytes is (compressed png file)'s bytes!!!
 
 def createBinaryFile(binary,path,message=True,compressMode=False):#bytes binary,str path
     #TO DEBUG
+    processBar=tqdm(total=3,desc=gsbl('Generating','\u751f\u6210\u4e2d')+': ',ncols=NCOLS)
     try:
-        if message and not compressMode:fileName=generateFileNameFromImage(path,removeDotPngs=not compressMode)#Auto Mode
-        else:fileName=path
+        if message and not compressMode:
+            fileName=generateFileNameFromImage(path,removeDotPngs=not compressMode)#Auto Mode
+        else:
+            fileName=path
         file=open(fileName,'wb',-1)
+        processBar.update()
         file.write(binary)
         file.close()
+        processBar.update()
         try:image=Image.open(fileName)
         except:image=None
     except BaseException as exception:
         printExcept(exception,"createBinaryFile()->")
         return (None,None,None)
     #==Return,may Close File==#
+    processBar.update()
+    processBar.close()
     if message:#not close
         printPathBL(path=fileName,en="Binary File {} generated!",zh="\u4e8c\u8fdb\u5236\u6587\u4ef6{}\u5df2\u751f\u6210\uff01")
     file=open(fileName,'rb+',-1)
@@ -318,13 +325,15 @@ def RGBAtoPixel(color):
 
 def generateFileNameFromImage(originPath,removeDotPngs=False):
     baseName=os.path.basename(originPath)
-    if baseName.count('.')>1:
-        baseName=baseName[0:baseName.rindex('.')]
-    elif '.png' in baseName:
-        baseName+='.txt'
+    result=baseName
+    if result.count('.')>1:
+        result=result[:result.rindex('.')]
+    if ('.png' in result) or result==baseName:
+        result+='.txt'
     if removeDotPngs:
-        while baseName[-4:]=='.png':baseName=baseName[:-4]
-    return baseName
+        while result[-4:]=='.png':
+            result=result[:-4]
+    return result
 
 def readImage(path):
     ima=None

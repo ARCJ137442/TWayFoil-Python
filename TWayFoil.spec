@@ -3,8 +3,8 @@
 block_cipher = None
 
 
-a = Analysis(['IKonverti.py'],
-             pathex=['C:\\A137442\\Python\\IKonverti'],
+a = Analysis(['TWayFoil.py'],
+             pathex=['C:\\A137442\\Python\\TWayFoil'],
              binaries=[],
              datas=[],
              hiddenimports=[],
@@ -23,7 +23,7 @@ exe = EXE(pyz,
           a.zipfiles,
           a.datas,
           [],
-          name='IKonverti',
+          name='TWayFoil',
           debug=False,
           bootloader_ignore_signals=False,
           strip=False,
