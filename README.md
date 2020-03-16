@@ -1,13 +1,43 @@
 # TWayFoil
 
-## What is `TWayFoil`?
-* TWayFoil is an Image-Binary Converter.
+## 什么是`TWayFoil`？
+* TWayFoil是一个图片-二进制转换器.
 
-## How to use `TWayFoil`?
-* You can drag files to the TWayFoil.exe,or execute command `python TWayFoil.exe <PATH_TO_FILE>`
-* You can also directly open the exe to enter the command line mode and enter the path to convert
+## 怎么使用`TWayFoil`？
+* 你可以拖动文件到TWayFoil.exe,或者执行命令`python TWayFoil.exe <PATH_TO_FILE>`
+* 你可以直接打开可执行文件，进入命令行模式再输入指定的路径来进行文件转换
 
-## What is the Principle of `TWayFoil`?
-* A **RGBA pixel** in image uses 32 bit
-* A **binary byte** in binary file uses 8 bit
-* So TWayFoil try to combine 4 bytes in a pixel
+## `TWayFoil`的原理是什么？
+* 长文警告
+### 2.0.0 核心(202003152029):
+* 引言：
+    * 四字节转一像素的规定：四个字节(0x78,0xf1,0xd1,0x9a)按0->a,1->r,2->g,b->3转换为AARRGGBB颜色(0x78f1d19a)
+    * 核心：在图片的像素列表中，取最后一个像素的最后一位当做末端像素的多余字节数，并删除末尾多余像素长度
+    * image.tobytes返回可枚举的、包含所有像素颜色的bytes列表
+    * 例如image.bytes=b'0x7f/0x44/0xaf/0x7d/0x1a/0x89/0x11/0x56/0xac/0xcc/0xab/0x67/0xfa/0xda/0xcb/0x67/0x09/0x87/0x4a/0xc8/0x75/0x6d/0x00/0x02'
+* 关于图像转字节码的功能
+    * 表示的原字节码总长为4之倍：
+        * -> 7f ad 1a 86 ab 6a 87 03 00 | 原像素列表,注1
+        * -> 7f ad 1a 86 ab 6a 87 03 00 00 00 04 | L=0，表示原字节码总长为4之倍数
+        * -> 7f ad 1a 86 ab 6a 87 03 | 因为L=3(bin:11)，删除最后一个像素
+        * -> 7fad1a86,ab6a8703 | 最终像素组，上一步的字节码将被存储为二进制文件
+    * 表示的原字节码总长非4之倍（以上image）：
+        * -> 7f 44 af 7d 1a 89 11 56 ac cc ab 67 fa da cb 67 09 87 4a c8 75 6d 00 02 | 原像素列表，注2
+        * -> 7f 44 af 7d , 1a 89 11 56 , ac cc ab 67 , fa da cb 67 , 09 87 4a c8 75 6d 00 02 | L=01， 注3
+        * -> 7f 44 af 7d , 1a 89 11 56 , ac cc ab 67 , fa da cb 67 , 09 87 4a c8 75 6d | L=00 删除末端计数字节自身，并删除L个字节
+        * -> 7f 44 af 7d 1a 89 11 56 ac cc ab 67 fa da cb 67 09 87 4a c8 75 6d | 最终的二进制字节码将被存储为二进制文件
+    * 注： 
+        * (1)默认将最后一位当做位数
+        * (2)本地图像的tobytes函数返回的字节码总长恒为4的倍数
+        * (3)末端无意义字节（不包括自身）的数目，正常的L值为0~3
+    * 子IDEA 1:以最后一个像素的最后两个bit(00~11)作为长度
+* 关于字节码转图像的功能（示例，过程相当于上一个例子的逆过程）
+    * 字节码总长非4之倍：
+        * ->8a 76 47 3f 4c 9b 7a 06 4b 7d 9a 4c 8e 67 00 f8 ff ca bd | 原字节码
+        * ->8a 76 47 3f,4c 9b 7a 06,4b 7d 9a 4c,8e 67 00 f8,ff ca bd 00 | 增1~3个字节以补全像素，计之为L=01（本例中）
+        * ->8a 76 47 3f,4c 9b 7a 06,4b 7d 9a 4c,8e 67 00 f8,ff ca bd 01 | 将最后一个字节修改为L（本例中"ff ca bd 01"）
+        * ->0x8a76473f,0x4c9b7a06,0x4b7d9a4c,0x8e6700f8,0xffcabd01 | 最终像素组，上一步的字节码将被等效存储为图片
+    * 字节码总长为4之倍：
+        * ->8a 76 4f 4c 9b 7a 06 7d 9a 4e 67 00 f8 fa bd e5 ac 6d 9f 89 | 原字节码
+        * ->8a 76 4f 4c 9b 7a 06 7d 9a 4e 67 00 f8 fa bd e5 ac 6d 9f 89 00 00 00 00 |增加四个字节（代表一个空像素）
+        * ->8a764f4c,9b7a067d,9a4e6700,f8fabde5,ac6d9f89,00000000| 最终像素组，上一步的字节码将被等效存储为图片
