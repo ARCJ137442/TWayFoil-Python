@@ -25,7 +25,7 @@ def getStrByLanguage(en='',zh=''):
 def gsbl(en='',zh=''):return getStrByLanguage(en=en,zh=zh)
 def prbl(en='',zh=''):return print(gsbl(en=en,zh=zh))
 def inputBL(en='',zh=''):return input(gsbl(en=en,zh=zh))
-def printPath(message,path):return print(message.format('\"'+path+'\"'))
+def printPath(message,path):return print(message%('\"'+path+'\"'))
 def printPathBL(path,en,zh):return printPath(gsbl(en=en,zh=zh),path=path)
 
 #0=binary,1=image,-1=exception
@@ -67,7 +67,7 @@ def autoConver(path,forceImage=False):
             printExcept(e,"autoConver()->")
         else:return
     if (not forceImage) and not Image.isImageType(currentFile):
-        printPathBL(en="Now try to load {} as binary",zh="\u73b0\u5728\u5c1d\u8bd5\u8bfb\u53d6\u4e8c\u8fdb\u5236\u6570\u636e {}",path=path)
+        printPathBL(en="Now try to load %s as binary",zh="\u73b0\u5728\u5c1d\u8bd5\u8bfb\u53d6\u4e8c\u8fdb\u5236\u6570\u636e %s",path=path)
     converBinaryToImage(path=path,binaryFile=readBinary(path),returnBytes=False,compressMode=False,message=True)
 
 #aa,rr,gg,bb -> 0xaarrggbb
@@ -94,7 +94,7 @@ def converBinaryToImage(path,binaryFile,returnBytes=False,message=None,compressM
     if message==None:message=not returnBytes
     #========From Binary========#
     if binaryFile==None:
-        printPathBL(en="Faild to load binary {}",zh="\u8bfb\u53d6\u4e8c\u8fdb\u5236\u6587\u4ef6{}\u5931\u8d25",path=path)
+        printPathBL(en="Faild to load binary %s",zh="\u8bfb\u53d6\u4e8c\u8fdb\u5236\u6587\u4ef6%s\u5931\u8d25",path=path)
         return
     elif type(binaryFile)==bytes:
         bReadBytes=binaryFile
@@ -161,7 +161,7 @@ def releaseFromImage(path,image):
     oResult=createBinaryFile(oResult[2],generateFileNameFromImage(path,removeDotPngs=True),message=True,compressMode=False)#required not closed file
     oResult[1].close()#close at there
     try:
-        printPathBL(en="Deleting temp file {}...",zh="\u6b63\u5728\u5220\u9664\u4e34\u65f6\u6587\u4ef6{}\u3002\u3002\u3002",path=tPath)
+        printPathBL(en="Deleting temp file %s...",zh="\u6b63\u5728\u5220\u9664\u4e34\u65f6\u6587\u4ef6%s\u3002\u3002\u3002",path=tPath)
         os.remove(tPath)
     except BaseException as e:
         printExcept(e,"releaseFromImage()->")
@@ -234,7 +234,7 @@ def createBinaryFile(binary,path,message=True,compressMode=False):#bytes binary,
     processBar.update()
     processBar.close()
     if message:#not close
-        printPathBL(path=fileName,en="Binary File {} generated!",zh="\u4e8c\u8fdb\u5236\u6587\u4ef6{}\u5df2\u751f\u6210\uff01")
+        printPathBL(path=fileName,en="Binary File %s generated!",zh="\u4e8c\u8fdb\u5236\u6587\u4ef6%s\u5df2\u751f\u6210\uff01")
     file=open(fileName,'rb+',-1)
     return (image,file,file.read())
 #return tuple(image,file,fileBytes)
@@ -278,15 +278,15 @@ def catchExcept(err,path,head):
     global numExcept
     numExcept=numExcept+1
     if isinstance(err,FileNotFoundError):
-        printPathBL(en="{} not found!",zh="\u672a\u627e\u5230{}\uff01",path=path)
+        printPathBL(en="%s not found!",zh="\u672a\u627e\u5230%s\uff01",path=path)
     elif isinstance(err,OSError):
-        if err.errno==errno.ENOENT:printPathBL(en="{} read/write faild!",zh="\u8bfb\u5199{}\u5931\u8d25\uff01",path=path)
+        if err.errno==errno.ENOENT:printPathBL(en="%s read/write faild!",zh="\u8bfb\u5199%s\u5931\u8d25\uff01",path=path)
         elif err.errno==errno.EPERM:printPathBL(en="Permission denied!",zh="\u8bbf\u95ee\u88ab\u62d2\u7edd\uff01",path=path)
-        elif err.errno==errno.EISDIR:printPathBL(en="{} is a directory!",zh="{}\u662f\u4e00\u4e2a\u76ee\u5f55\uff01",path=path)
+        elif err.errno==errno.EISDIR:printPathBL(en="%s is a directory!",zh="%s\u662f\u4e00\u4e2a\u76ee\u5f55\uff01",path=path)
         elif err.errno==errno.ENOSPC:printPathBL(en="Not enough equipment space!",zh="\u8bbe\u5907\u7a7a\u95f4\u4e0d\u8db3\uff01",path=path)
         elif err.errno==errno.ENAMETOOLONG:printPathBL(en="The File name is too long!",zh="\u6587\u4ef6\u540d\u8fc7\u957f\uff01",path=path)
-        elif err.errno==errno.EINVAL:printPathBL(en="Invalid File name: {}",zh="\u6587\u4ef6\u540d\u65e0\u6548\uff1a{}",path=path)
-        else:printPathBL(en="Reading/Writeing {} error!",zh="\u8bfb\u5199\u6587\u4ef6{}\u9519\u8bef\uff01",path=path)
+        elif err.errno==errno.EINVAL:printPathBL(en="Invalid File name: %s",zh="\u6587\u4ef6\u540d\u65e0\u6548\uff1a%s",path=path)
+        else:printPathBL(en="Reading/Writeing %s error!",zh="\u8bfb\u5199\u6587\u4ef6%s\u9519\u8bef\uff01",path=path)
     else:
         printExcept(err,head)
 
@@ -336,5 +336,5 @@ try:
             cmdLineMode()
 except BaseException as e:
     printExcept(e,"main->")
-if numExcept>0 and InputYN((gsbl(en="{} exceptions found.\nDo you need to switch to command line mode?",zh="\u53d1\u73b0\u4e86{}\u4e2a\u5f02\u5e38\u3002\u4f60\u9700\u8981\u5207\u6362\u5230\u547d\u4ee4\u884c\u6a21\u5f0f\u5417\uff1f")+"Y/N:").format(numExcept)):
+if numExcept>0 and InputYN((gsbl(en="%s exceptions found.\nDo you need to switch to command line mode?",zh="\u53d1\u73b0\u4e86%s\u4e2a\u5f02\u5e38\u3002\u4f60\u9700\u8981\u5207\u6362\u5230\u547d\u4ee4\u884c\u6a21\u5f0f\u5417\uff1f")+"Y/N:").format(numExcept)):
     cmdLineMode()
