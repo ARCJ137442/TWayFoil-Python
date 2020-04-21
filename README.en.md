@@ -43,4 +43,4 @@
         * -> 8a764f4c, 9b7a067d, 9a4e6700, f8fabde5, ac6d9f89,00000000 | In the final pixel group, the bytecode of the previous step will be equivalently stored as a picture
 
 ## Does `TWayFoil` have an open source license?
-* `TWayFoil` is now used ***MIT [License](https://github.com/ARCJ137442/TWayFoil-Python/blob/master/LICENCE)***
+* `TWayFoil` is now used ***MIT License***(See LICENCE)
