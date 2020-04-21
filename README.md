@@ -43,4 +43,4 @@
         * ->8a764f4c,9b7a067d,9a4e6700,f8fabde5,ac6d9f89,00000000| 最终像素组，上一步的字节码将被等效存储为图片
 
 ## `TWayFoil`有开源许可证吗？
-* `TWayFoil`现采用*MIT[许可证](LICENCE)*
+* `TWayFoil`现采用***MIT[许可证](https://github.com/ARCJ137442/TWayFoil-Python/blob/master/LICENCE)***
