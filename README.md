@@ -41,3 +41,6 @@
         * ->8a 76 4f 4c 9b 7a 06 7d 9a 4e 67 00 f8 fa bd e5 ac 6d 9f 89 | 原字节码
         * ->8a 76 4f 4c 9b 7a 06 7d 9a 4e 67 00 f8 fa bd e5 ac 6d 9f 89 00 00 00 00 |增加四个字节（代表一个空像素）
         * ->8a764f4c,9b7a067d,9a4e6700,f8fabde5,ac6d9f89,00000000| 最终像素组，上一步的字节码将被等效存储为图片
+
+## `TWayFoil`有开源许可证吗？
+* `TWayFoil`现采用*MIT[许可证](LICENCE)*

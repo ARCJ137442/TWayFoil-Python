@@ -41,3 +41,6 @@
         *-> 8a 76 4f 4c 9b 7a 06 7d 9a 4e 67 00 f8 fa bd e5 ac 6d 9f 89 | original bytecode
         *-> 8a 76 4f 4c 9b 7a 06 7d 9a 4e 67 00 f8 fa bd e5 ac 6d 9f 89 00 00 00 00 | Add four bytes (representing an empty pixel)
         *-> 8a764f4c, 9b7a067d, 9a4e6700, f8fabde5, ac6d9f89,00000000 | In the final pixel group, the bytecode of the previous step will be equivalently stored as a picture
+
+## Does `TWayFoil` have an open source license?
+* `TWayFoil` is now used * MIT [License] (LICENCE) *
